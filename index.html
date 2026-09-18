@@ -9,6 +9,15 @@
 </center><br>
 <font size=6>Приветствую! Ниже представленны названия и даты мероприятий нажав на которые можно увидеть весь альбом с мероприятия, а также сохранить на память).
 <br>
+    <label for="site-select">Перейти на сайт:</label>
+
+<!-- Атрибут onchange запускает переход при выборе пункта -->
+<select id="site-select" onchange="window.location.href=this.value;">
+  <option value="">-- Выберите дату --</option>
+  <option value="ved.html">01.01.2025</option>
+  <option value="secnd.html">01.09.2026</option>
+</select>
+
 <li>
 <a href="ved.html">Рыжий 01.01.2025</a> 
 </li>
