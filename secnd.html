@@ -4,13 +4,12 @@
     // window.location.href = "works.html";
 </script>
 <title>Линейка 
-      <!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Генератор Родословного Древа</title>
-    <!-- Подключаем библиотеку Vis.js для работы с графами -->
+    <title>Умный Генератор Родословного Древа</title>
     <script type="text/javascript" src="https://unpkg.com"></script>
     <style>
         body {
@@ -35,7 +34,7 @@
             min-height: 0;
         }
         .input-panel {
-            width: 350px;
+            width: 380px;
             display: flex;
             flex-direction: column;
             gap: 10px;
@@ -49,9 +48,10 @@
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
-            font-size: 14px;
+            font-size: 13px;
             resize: none;
             font-family: monospace;
+            line-height: 1.4;
         }
         button {
             padding: 12px;
@@ -83,37 +83,42 @@
             font-size: 12px;
             color: #7f8c8d;
             line-height: 1.4;
+            background: #eef2f3;
+            padding: 8px;
+            border-radius: 4px;
         }
     </style>
 </head>
 <body>
 
-    <h1>🌳 Интерактивное Генеалогическое Древо</h1>
+    <h1>🌳 Интерактивное Генеалогическое Древа</h1>
     
     <div class="container">
-        <!-- Панель ввода данных -->
         <div class="input-panel">
             <h3>Введите список родственников:</h3>
-            <p class="hint">Формат: <strong>Имя (Родители: Папа, Мама)</strong> или просто <strong>Имя</strong>. Каждая персона с новой строки.</p>
-            <textarea id="text-input" placeholder="Пример:&#10;Иван Петров&#10;Анна Петрова&#10;Сергей Петров (Родители: Иван Петров, Анна Петрова)&#10;Ольга Петрова (Родитель: Сергей Петров)"></textarea>
+            <div class="hint">
+                <strong>Варианты ввода:</strong><br>
+                1. Как у вас: <code>Me: Имя</code>, <code>Father: Имя</code><br>
+                2. Через стрелочку: <code>Отец -> Сын</code><br>
+                3. Классический: <code>Имя (Родители: Мама, Папа)</code>
+            </div>
+            <textarea id="text-input" placeholder="Введите текст сюда..."></textarea>
             <button onclick="buildTree()">Построить древо</button>
         </div>
         
-        <!-- Панель отображения древа -->
         <div class="tree-panel">
             <div id="network"></div>
         </div>
     </div>
 
     <script>
-        // Демо-данные при первой загрузке
+        // Вставляем ваш текст со скриншота в качестве примера по умолчанию
         document.getElementById('text-input').value = 
-`Иван Иванов
-Мария Иванова
-Пётр Иванов (Родители: Иван Иванов, Мария Иванова)
-Светлана Иванова (Родители: Иван Иванов, Мария Иванова)
-Алексей Иванов (Родитель: Пётр Иванов)
-Елена Иванова`;
+`Me: Murashkevich Anton Alyaksandravich
+Father: Murashkevich Alyaksandr Branislavavich
+Grandfather: Murashkevich Branislaus Uladzimiravich
+Grandmother: Murashkevich Valyantsina Ilyinichna
+Mother: Ihnatavich Viktoryya Antonauna`;
 
         let network = null;
 
@@ -124,54 +129,95 @@
             const nodesMap = new Map();
             const edges = [];
             
-            // Регулярные выражения для поиска родителей в скобках
-            const parentsRegex = /\((?:Родители\vert{}Родитель):\s*([^)]+)\)/i;
+            // Временный объект для хранения ролей (Me, Father и т.д.)
+            const roles = {};
 
-            // Шаг 1: Парсим строки и собираем людей
+            // ШАГ 1: Первый проход — ищем явные роли (как на скриншоте)
             lines.forEach(line => {
                 line = line.trim();
                 if (!line) return;
 
-                let name = line;
-                let parentsStr = "";
-
-                const match = line.match(parentsRegex);
-                if (match) {
-                    parentsStr = match[1];
-                    // Очищаем имя человека от скобок с родителями
-                    name = line.replace(match[0], '').trim();
-                }
-
-                // Добавляем человека в базу, если его там еще нет
-                if (!nodesMap.has(name)) {
-                    nodesMap.set(name, { id: name, label: name });
-                }
-
-                // Если указаны родители, обрабатываем их
-                if (parentsStr) {
-                    // Разделяем родителей по запятой
-                    const parents = parentsStr.split(',').map(p => p.trim());
-                    parents.forEach(parentName => {
-                        if (parentName) {
-                            // Гарантируем, что родитель тоже есть в списке узлов
-                            if (!nodesMap.has(parentName)) {
-                                nodesMap.set(parentName, { id: parentName, label: parentName });
-                            }
-                            // Создаем связь от Родителя к Ребенку
-                            edges.push({
-                                from: parentName,
-                                to: name,
-                                arrows: 'to',
-                                color: { color: '#7f8c8d', inherit: false }
-                            });
-                        }
-                    });
+                // Проверка на формат Роль: Имя (например, Father: Иван)
+                const roleMatch = line.match(/^(me|я|father|отец|папа|mother|мать|мама|grandfather|дедушка|grandmother|бабушка)\s*:\s*(.+)\$/i);
+                if (roleMatch) {
+                    const roleKey = roleMatch[1].toLowerCase();
+                    const name = roleMatch[2].trim();
+                    roles[roleKey] = name;
+                    
+                    if (!nodesMap.has(name)) {
+                        nodesMap.set(name, { id: name, label: name });
+                    }
                 }
             });
 
-            // Преобразуем Map в массив для Vis.js
+            // Связываем роли между собой, если они были найдены
+            const me = roles['me'] || roles['я'];
+            const father = roles['father'] || roles['отец'] || roles['папа'];
+            const mother = roles['mother'] || roles['мать'] || roles['мама'];
+            const grandfather = roles['grandfather'] || roles['дедушка'];
+            const grandmother = roles['grandmother'] || roles['бабушка'];
+
+            if (me) {
+                if (father) edges.push({ from: father, to: me });
+                if (mother) edges.push({ from: mother, to: me });
+            }
+            if (father) {
+                // Если дедушка/бабушка имеют ту же фамилию, что и отец, привязываем их к отцу
+                if (grandfather) edges.push({ from: grandfather, to: father });
+                if (grandmother) edges.push({ from: grandmother, to: father });
+            } else if (mother) {
+                // Если отца нет, но есть мать — привязываем к ней
+                if (grandfather) edges.push({ from: grandfather, to: mother });
+                if (grandmother) edges.push({ from: grandmother, to: mother });
+            }
+
+            // ШАГ 2: Второй проход — обработка других форматов (стрелочки и скобки)
+            lines.forEach(line => {
+                line = line.trim();
+                if (!line) return;
+
+                // Если строка уже обработана как роль, пропускаем её, чтобы не дублировать
+                if (line.match(/^(me|я|father|отец|папа|mother|мать|мама|grandfather|дедушка|grandmother|бабушка)\s*:\s*/i)) {
+                    return;
+                }
+
+                // Формат со стрелочкой: Родитель -> Ребенок
+                if (line.includes('->')) {
+                    const parts = line.split('->').map(p => p.trim());
+                    if (parts.length === 2) {
+                        const parent = parts[0];
+                        const child = parts[1];
+                        if (!nodesMap.has(parent)) nodesMap.set(parent, { id: parent, label: parent });
+                        if (!nodesMap.has(child)) nodesMap.set(child, { id: child, label: child });
+                        edges.push({ from: parent, to: child });
+                    }
+                    return;
+                }
+
+                // Стандартный формат со скобками: Имя (Родители: О, М)
+                let name = line;
+                const parentsRegex = /\((?:Родители\vert{}Родитель):\s*([^)]+)\)/i;
+                const match = line.match(parentsRegex);
+                
+                if (match) {
+                    name = line.replace(match, '').trim();
+                    if (!nodesMap.has(name)) nodesMap.set(name, { id: name, label: name });
+                    
+                    const parents = match[1].split(',').map(p => p.trim());
+                    parents.forEach(parentName => {
+                        if (parentName) {
+                            if (!nodesMap.has(parentName)) nodesMap.set(parentName, { id: parentName, label: parentName });
+                            edges.push({ from: parentName, to: name });
+                        }
+                    });
+                } else {
+                    // Просто имя одиночного узла
+                    if (!nodesMap.has(name)) nodesMap.set(name, { id: name, label: name });
+                }
+            });
+
+            // Настройка внешнего вида карточек
             const nodes = Array.from(nodesMap.values()).map(node => {
-                // Стилизуем узлы
                 return {
                     ...node,
                     shape: 'box',
@@ -186,43 +232,40 @@
                 };
             });
 
-            // Данные для Vis.js Network
+            // Добавляем стрелочки ко всем связям
+            edges.forEach(edge => {
+                edge.arrows = 'to';
+                edge.color = { color: '#bdc3c7', inherit: false };
+            });
+
             const data = {
                 nodes: new vis.DataSet(nodes),
                 edges: new vis.DataSet(edges)
             };
 
-            // Настройки отображения (иерархическая структура сверху вниз)
             const options = {
                 layout: {
                     hierarchical: {
-                        direction: 'UD', // Up-Down (Сверху вниз)
+                        direction: 'UD', // Сверху вниз
                         sortMethod: 'directed',
-                        nodeSpacing: 150,
-                        levelSeparation: 100
+                        nodeSpacing: 200,
+                        levelSeparation: 120
                     }
                 },
-                physics: false, // Отключаем хаотичное движение узлов
-                interaction: {
-                    dragNodes: true,
-                    zoomView: true,
-                    dragView: true
-                }
+                physics: false,
+                interaction: { dragNodes: true, zoomView: true, dragView: true }
             };
 
-            // Инициализация или обновление графа
             const container = document.getElementById('network');
-            if (network) {
-                network.destroy();
-            }
+            if (network) network.destroy();
             network = new vis.Network(container, data, options);
         }
 
-        // Строим древо автоматически при загрузке страницы
         window.onload = buildTree;
     </script>
 </body>
 </html>
+
 
 </title>
 </head>
