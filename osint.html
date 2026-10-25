@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced OSINT Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: #161b22;
+            --text-color: #c9d1d9;
+            --accent-color: #ff0050; /* TikTok Cyan/Pink Accent */
+            --accent-blue: #58a6ff;
+            --border-color: #30363d;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1, h2 {
+            color: #fff;
+            text-align: center;
+        }
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        input {
+            flex: 1;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: var(--accent-color);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .info-text {
+            background-color: #21262d;
+            border-left: 4px solid var(--accent-blue);
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            border-radius: 0 4px 4px 0;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .osint-link {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            text-align: center;
+            border-radius: 4px;
+            text-decoration: none;
+            color: var(--accent-blue);
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .osint-link:hover {
+            background-color: #21262d;
+            border-color: var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>OSINT TikTok & Username Помощник</h1>
+
+    <div class="panel">
+        <h2>Поиск контактов по никнейму TikTok</h2>
+        
+        <div class="info-text">
+            <strong>Как это работает:</strong> Прямого метода вытащить телефон/email из TikTok без доступа к аккаунту не существует. Данные ссылки генерируют продвинутые поисковые запросы (Dorks), которые ищут упоминания этого никнейма вместе со следами почтовых доменов, номеров телефонов или реальных имён на сторонних сайтах.
+        </div>
+
+        <div class="input-group">
+            <input type="text" id="ttUsername" placeholder="Введите никнейм (например, ivan_ivanov)">
+            <button onclick="generateTikTokOSINT()">Сгенерировать карту поиска</button>
+        </div>
+
+        <div class="links-grid" id="osintLinksBox">
+            <!-- Здесь появятся ссылки -->
+        </div>
+    </div>
+</div>
+
+<script>
+    function generateTikTokOSINT() {
+        const username = document.getElementById('ttUsername').value.trim().replace(/^@/, '');
+        const box = document.getElementById('osintLinksBox');
+
+        if (!username) {
+            box.innerHTML = '<div style="grid-column: 1/-1; text-align:center;">Пожалуйста, введите никнейм.</div>';
+            return;
+        }
+
+        // Формируем ссылки для OSINT-анализа через поисковые операторы Google (Google Dorks)
+        const targets = [
+            {
+                name: '📱 Открыть профиль TikTok',
+                url: `https://tiktok.com{username}`
+            },
+            {
+                name: '🔍 Поиск привязанной почты (Dork)',
+                url: `https://google.com"${username}"+("@gmail.com"++OR+"@mail.ru"+OR+"@yandex.ru"+OR+"@outlook.com")`
+            },
+            {
+                name: '📞 Поиск упоминаний телефона (Dork)',
+                url: `https://google.com"${username}"+("phone"+OR+"тел"+OR+"whatsapp"+OR+"viber"+OR+"+7"+OR+"+375")`
+            },
+            {
+                name: '👤 Поиск ФИО / Реального имени',
+                url: `https://google.com"${username}"+("ФИО"+OR+"имя"+OR+"fio"+OR+"name"+OR+"резюме")`
+            },
+            {
+                name: '🔗 Поиск никнейма в Linktree / Ссылках',
+                url: `https://google.comsite:linktr.ee/${username}+OR+site:taplink.cc/${username}`
+            },
+            {
+                name: '🌐 Кросс-платформа: Упоминания в Instagram',
+                url: `https://google.comsite:instagram.com+"${username}"`
+            },
+            {
+                name: '🐙 Поиск кода/аккаунтов на GitHub',
+                url: `https://github.com{username}&type=users`
+            }
+        ];
+
+        box.innerHTML = targets.map(target => `
+            <a class="osint-link" href="${target.url}" target="_blank">${target.name}</a>
+        `).join('');
+    }
+</script>
+
+</body>
+</html>
